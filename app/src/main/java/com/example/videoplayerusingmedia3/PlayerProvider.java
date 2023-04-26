@@ -6,6 +6,7 @@ import android.net.Uri;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.media3.common.MediaItem;
+import androidx.media3.ui.PlayerView;
 
 import com.example.videoplayerusingmedia3.player.Player;
 
@@ -23,18 +24,6 @@ public interface PlayerProvider {
     @NonNull
     MediaItem createMediaItem(@NonNull Uri uri);
 
-//    /**
-//     * Creates the {@link MediaItem} for the specified {@link Uri}.
-//     * The created {@link MediaItem} can later be used with the {@link Player},
-//     * as a data source.
-//     * Uses the default {@link Player} {@link Config}.
-//     *
-//     * @param uri       the uri to create the media source for
-//     * @param isLooping whether to loop the video
-//     * @return the created media source
-//     */
-//    @NonNull
-//    MediaItem createMediaItem(@NonNull Uri uri, boolean isLooping);
 
     /**
      * Creates the a non-looping {@link MediaItem}
@@ -45,6 +34,25 @@ public interface PlayerProvider {
      */
     @NonNull
     MediaItem createMediaItem(@NonNull Config config, @NonNull Uri uri);
+
+    /**
+     * Creates the a non-looping {@link MediaItem}
+     *
+     * @param uri    the uri to created the media source for
+     * @return the created media source
+     */
+    @NonNull
+    MediaItem createAdSupportedMediaItem(@NonNull Uri uri, @NonNull Uri adTagUri);
+
+    /**
+     * Creates the a non-looping {@link MediaItem}
+     *
+     * @param config the player configuration
+     * @param uri    the uri to created the media source for
+     * @return the created media source
+     */
+    @NonNull
+    MediaItem createAdSupportedMediaItem(@NonNull Config config, @NonNull Uri uri, @NonNull Uri adTagUri);
 
 
     /**
@@ -102,6 +110,16 @@ public interface PlayerProvider {
      */
     @NonNull
     Player getOrInitPlayer(@NonNull Config config, @NonNull String key);
+
+    /**
+     * Retrieves an existing or create a brand-new {@link Player} instance for the specified key and Player {@link Config}.
+     *
+     * @param config the player configuration
+     * @param key    the key to retrieve the player for
+     * @return the retrieved or created Player
+     */
+    @NonNull
+    Player getOrInitAdSupportedPlayer(@NonNull Config config, @NonNull String key, PlayerView playerView);
 
     /**
      * Checks if there's a {@link Player} available for the specified key.

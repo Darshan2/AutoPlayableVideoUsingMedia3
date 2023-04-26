@@ -13,6 +13,7 @@ import androidx.annotation.OptIn;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.util.UnstableApi;
 import androidx.media3.common.util.Util;
+import androidx.media3.ui.PlayerView;
 
 import com.example.videoplayerusingmedia3.player.Player;
 import com.example.videoplayerusingmedia3.player.creator.PlayerCreator;
@@ -81,7 +82,13 @@ public final class PlayerProviderImpl implements PlayerProvider {
     @NonNull
     @Override
     public final MediaItem createMediaItem(@NonNull Uri uri) {
-        return MediaItem.fromUri(uri);
+        return createMediaItem(DEFAULT_CONFIG, uri);
+    }
+
+    @NonNull
+    @Override
+    public final MediaItem createAdSupportedMediaItem(@NonNull Uri uri, @NonNull Uri adTagUri) {
+        return createAdSupportedMediaItem(DEFAULT_CONFIG, uri, adTagUri);
     }
 
 
@@ -94,6 +101,17 @@ public final class PlayerProviderImpl implements PlayerProvider {
         final PlayerCreator creator = getOrInitCreator(config);
 
         return creator.createMediaItem(uri);
+    }
+
+    @NonNull
+    @Override
+    public final MediaItem createAdSupportedMediaItem(@NonNull Config config, @NonNull Uri uri, @NonNull Uri adTagUri) {
+        Preconditions.nonNull(config);
+        Preconditions.nonNull(uri);
+
+        final PlayerCreator creator = getOrInitCreator(config);
+
+        return creator.createAdSupportedMediaItem(uri, adTagUri);
     }
 
     @NonNull
@@ -157,6 +175,45 @@ public final class PlayerProviderImpl implements PlayerProvider {
                 } else {
                     // creating a brand-new PlayerNode instance
                     playerNode = new PlayerNode(playerCreator.createPlayer()).setKey(key);
+
+                    // adding it to the general pool
+                    playerNodePool.add(playerNode);
+                }
+            } else {
+                // using the available "Free" (Detached) PlayerNode
+                playerNode = freePlayerNode;
+            }
+        }
+
+        return playerNode.getPlayer();
+    }
+
+    @NonNull
+    @Override
+    public Player getOrInitAdSupportedPlayer(@NonNull Config config, @NonNull String key, PlayerView playerView) {
+        Preconditions.nonNull(config);
+        Preconditions.nonEmpty(key);
+
+        final Pair<PlayerCreator, PlayerNodePool> pair = getOrInit(config);
+        final PlayerCreator playerCreator = pair.first;
+        final PlayerNodePool playerNodePool = pair.second;
+
+        PlayerNode playerNode = playerNodePool.get(key);
+
+        if (playerNode == null) {
+            // checking to see if there's a free (detached) PlayerNode to be reused
+            final PlayerNode freePlayerNode = playerNodePool.acquireFree(key);
+
+            // in case of the absence of the free (detached) PlayerNode
+            if (freePlayerNode == null) {
+                // If the pool is full, we need to pick the PlayerNode
+                // that is considered "the oldest" in terms of the last access time,
+                // otherwise we can create a brand-new instance of the PlayerNode and add it to the pool
+                if (playerNodePool.isFull()) {
+                    playerNode = playerNodePool.acquireOldest(key);
+                } else {
+                    // creating a brand-new PlayerNode instance
+                    playerNode = new PlayerNode(playerCreator.createAdSupportedPlayer(playerView)).setKey(key);
 
                     // adding it to the general pool
                     playerNodePool.add(playerNode);

@@ -29,8 +29,8 @@ import androidx.media3.common.util.UnstableApi;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.LoadControl;
 import androidx.media3.exoplayer.RenderersFactory;
+import androidx.media3.exoplayer.ima.ImaAdsLoader;
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
-import androidx.media3.exoplayer.source.MediaSource;
 import androidx.media3.exoplayer.source.MediaSourceFactory;
 import androidx.media3.exoplayer.trackselection.TrackSelector;
 import androidx.media3.exoplayer.upstream.BandwidthMeter;
@@ -46,7 +46,7 @@ import com.example.videoplayerusingmedia3.util.misc.Preconditions;
  * A default implementation of the {@link Player} which has the most essential player-related
  * handling functionality implemented for you.
  */
-public class DefaultPlayer implements Player {
+public class AdSupportedPlayer implements Player {
 
     private final Context context;
 
@@ -55,22 +55,25 @@ public class DefaultPlayer implements Player {
     private final RenderersFactory renderersFactory;
     private final TrackSelector trackSelector;
     private final LoadControl loadControl;
-    private final DefaultMediaSourceFactory mediaSourceFactory;
     private final BandwidthMeter bandwidthMeter;
+    private final DefaultMediaSourceFactory mediaSourceFactory;
     private MediaItem mediaItem;
 
     private ExoPlayer exoPlayer;
     private VolumeController volumeController;
 
+    private final PlayerView playerView;
+    private ImaAdsLoader adsLoader;
+
     private AttachmentStateDelegate attachmentStateDelegate;
 
-
-    public DefaultPlayer(@NonNull Context context,
-                         @NonNull RenderersFactory renderersFactory,
-                         @NonNull TrackSelector trackSelector,
-                         @NonNull LoadControl loadControl,
-                         @NonNull DefaultMediaSourceFactory mediaSourceFactory,
-                         @Nullable BandwidthMeter bandwidthMeter) {
+    public AdSupportedPlayer(@NonNull Context context,
+                             @NonNull RenderersFactory renderersFactory,
+                             @NonNull TrackSelector trackSelector,
+                             @NonNull LoadControl loadControl,
+                             @NonNull DefaultMediaSourceFactory mediaSourceFactory,
+                             @NonNull PlayerView playerView,
+                             @Nullable BandwidthMeter bandwidthMeter) {
 
         this.context = checkNonNull(context).getApplicationContext();
         this.eventHandler = new PlayerEventListenerRegistry();
@@ -79,6 +82,17 @@ public class DefaultPlayer implements Player {
         this.loadControl = checkNonNull(loadControl);
         this.mediaSourceFactory = checkNonNull(mediaSourceFactory);
         this.bandwidthMeter = bandwidthMeter;
+        this.playerView = playerView;
+    }
+
+    @OptIn(markerClass = UnstableApi.class)
+    private ImaAdsLoader getAdsLoader() {
+        if(adsLoader == null) {
+            adsLoader = new ImaAdsLoader.Builder(context)
+                    .setVastLoadTimeoutMs(5000)
+                    .build();
+        }
+        return adsLoader;
     }
 
     @OptIn(markerClass = UnstableApi.class) @Override
@@ -86,6 +100,9 @@ public class DefaultPlayer implements Player {
         if (isInitialized()) {
             return;
         }
+
+        DefaultMediaSourceFactory mediaSourceFactory = this.mediaSourceFactory
+                        .setLocalAdInsertionComponents(adsConfiguration -> getAdsLoader(), playerView);
 
         this.exoPlayer = new ExoPlayer.Builder(this.context, this.renderersFactory)
                 .setMediaSourceFactory(mediaSourceFactory)
@@ -164,6 +181,7 @@ public class DefaultPlayer implements Player {
         checkPlayerState();
 
         playerView.setPlayer(this.exoPlayer);
+        getAdsLoader().setPlayer(this.exoPlayer);
     }
 
     @Override
@@ -171,6 +189,7 @@ public class DefaultPlayer implements Player {
         Preconditions.nonNull(playerView);
         checkPlayerState();
 
+        if(adsLoader != null) adsLoader.setPlayer(null);
         playerView.setPlayer(null);
     }
 

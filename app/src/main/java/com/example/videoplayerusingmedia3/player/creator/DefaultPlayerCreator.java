@@ -29,10 +29,15 @@ import androidx.media3.datasource.cache.CacheDataSource;
 import androidx.media3.exoplayer.DefaultRenderersFactory;
 import androidx.media3.exoplayer.LoadControl;
 import androidx.media3.exoplayer.RenderersFactory;
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
+import androidx.media3.exoplayer.source.MediaSource;
+import androidx.media3.exoplayer.source.MediaSourceFactory;
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector;
 import androidx.media3.exoplayer.trackselection.TrackSelector;
 import androidx.media3.exoplayer.upstream.BandwidthMeter;
+import androidx.media3.ui.PlayerView;
 
+import com.example.videoplayerusingmedia3.player.AdSupportedPlayer;
 import com.example.videoplayerusingmedia3.player.DefaultPlayer;
 import com.example.videoplayerusingmedia3.player.Player;
 import com.example.videoplayerusingmedia3.util.misc.Preconditions;
@@ -53,8 +58,7 @@ public final class DefaultPlayerCreator implements PlayerCreator {
     private final RenderersFactory renderersFactory;
     private final LoadControl loadControl;
     private final BandwidthMeter bandwidthMeter;
-    private final DataSource.Factory mediaDataSourceFactory;
-    private final DataSource.Factory manifestDataSourceFactory;
+    private final DefaultMediaSourceFactory mediaSourceFactory;
 
 
     public DefaultPlayerCreator(@NonNull PlayerProvider playerProvider, @NonNull Config config) {
@@ -66,18 +70,15 @@ public final class DefaultPlayerCreator implements PlayerCreator {
         this.loadControl = config.loadControl;
         this.bandwidthMeter = config.meter;
         this.renderersFactory = new DefaultRenderersFactory(playerProvider.getContext());
-        this.mediaDataSourceFactory = createDataSourceFactory(playerProvider, config);
-//        this.manifestDataSourceFactory = new DefaultDataSourceFactory(playerProvider.getContext(), playerProvider.getApplicationName());
-        this.manifestDataSourceFactory = new DefaultDataSourceFactory(playerProvider.getContext());
+        this.mediaSourceFactory = createMediaSourceFactory(playerProvider, config);
     }
 
-    private DataSource.Factory createDataSourceFactory(PlayerProvider playerProvider, Config config) {
+    private DefaultMediaSourceFactory createMediaSourceFactory(PlayerProvider playerProvider, Config config) {
         DataSource.Factory baseFactory = config.dataSourceFactory;
 
         if (baseFactory == null) {
             baseFactory = new DefaultDataSource.Factory(playerProvider.getContext())
                     .setTransferListener(config.meter);
-//            baseFactory = new DefaultDataSourceFactory(playerProvider.getContext(), playerProvider.getApplicationName(), config.meter);
         }
 
         DataSource.Factory factory = new DefaultDataSource.Factory(playerProvider.getContext(), baseFactory)
@@ -89,7 +90,8 @@ public final class DefaultPlayerCreator implements PlayerCreator {
                     .setUpstreamDataSourceFactory(factory);
         }
 
-        return factory;
+        return new DefaultMediaSourceFactory(playerProvider.getContext())
+                .setDataSourceFactory(factory);
     }
 
     @SuppressWarnings("unchecked")
@@ -101,7 +103,23 @@ public final class DefaultPlayerCreator implements PlayerCreator {
             this.renderersFactory,
             this.trackSelector,
             this.loadControl,
+            this.mediaSourceFactory,
             this.bandwidthMeter
+        );
+    }
+
+    @SuppressWarnings("unchecked")
+    @NonNull
+    @Override
+    public final Player createAdSupportedPlayer(@NonNull PlayerView playerView) {
+        return new AdSupportedPlayer(
+                this.playerProvider.getContext(),
+                this.renderersFactory,
+                this.trackSelector,
+                this.loadControl,
+                this.mediaSourceFactory,
+                playerView,
+                this.bandwidthMeter
         );
     }
 
@@ -109,6 +127,15 @@ public final class DefaultPlayerCreator implements PlayerCreator {
     @Override
     public final MediaItem createMediaItem(@NonNull Uri uri) {
         return MediaItem.fromUri(uri);
+    };
+
+    @NonNull
+    @Override
+    public final MediaItem createAdSupportedMediaItem(@NonNull Uri videoUri, @NonNull Uri adTagUri) {
+        return new MediaItem.Builder()
+                        .setUri(videoUri)
+                        .setAdsConfiguration(new MediaItem.AdsConfiguration.Builder(adTagUri).build())
+                        .build();
     };
 
 
@@ -120,8 +147,7 @@ public final class DefaultPlayerCreator implements PlayerCreator {
         result = ((prime * result) + this.trackSelector.hashCode());
         result = ((prime * result) + this.loadControl.hashCode());
         result = ((prime * result) + this.renderersFactory.hashCode());
-        result = ((prime * result) + this.mediaDataSourceFactory.hashCode());
-        result = ((prime * result) + this.manifestDataSourceFactory.hashCode());
+        result = ((prime * result) + this.mediaSourceFactory.hashCode());
 
         return result;
     }

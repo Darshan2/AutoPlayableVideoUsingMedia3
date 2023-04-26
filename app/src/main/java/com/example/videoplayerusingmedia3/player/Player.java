@@ -1,5 +1,7 @@
 package com.example.videoplayerusingmedia3.player;
 
+import android.view.View;
+
 import androidx.annotation.FloatRange;
 import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;

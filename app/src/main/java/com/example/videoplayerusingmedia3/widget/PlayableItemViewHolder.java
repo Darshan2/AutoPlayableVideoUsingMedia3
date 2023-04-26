@@ -17,6 +17,7 @@
 package com.example.videoplayerusingmedia3.widget;
 
 import android.net.Uri;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
@@ -29,7 +30,6 @@ import androidx.media3.common.PlaybackException;
 import androidx.media3.ui.PlayerView;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.videoplayerusingmedia3.R;
 import com.example.videoplayerusingmedia3.model.PlaybackInfo;
 import com.example.videoplayerusingmedia3.model.VolumeInfo;
 import com.example.videoplayerusingmedia3.player.Player;
@@ -65,16 +65,19 @@ public abstract class PlayableItemViewHolder extends RecyclerView.ViewHolder imp
 
     public final ViewGroup mParentViewGroup;
     public final PlayerView mPlayerView;
+    public boolean showInStreamVideoAds;
 
     public PlayableItemViewHolder(ViewGroup parentViewGroup, View itemView) {
         super(itemView);
 
         mParentViewGroup = parentViewGroup;
         mPlayerView = getViewHolderPlayerView();
+        showInStreamVideoAds = showInStreamVideAds();
     }
 
     public abstract PlayerView getViewHolderPlayerView();
-    
+
+
     @Override
     public final void start() {
         if (!isTrulyPlayable()) {
@@ -258,11 +261,16 @@ public abstract class PlayableItemViewHolder extends RecyclerView.ViewHolder imp
     }
 
     private Player getPlayer() {
-        return PlayerProviderImpl.getInstance(itemView.getContext()).getPlayer(getConfig(), getKey());
+        Player player = PlayerProviderImpl.getInstance(itemView.getContext()).getPlayer(getConfig(), getKey());
+        return player;
     }
 
     private Player getOrInitPlayer() {
-        return PlayerProviderImpl.getInstance(itemView.getContext()).getOrInitPlayer(getConfig(), getKey());
+        if(showInStreamVideoAds && !TextUtils.isEmpty(getAdTagUrl())) {
+            return PlayerProviderImpl.getInstance(itemView.getContext()).getOrInitAdSupportedPlayer(getConfig(), getKey(), mPlayerView);
+        } else {
+            return PlayerProviderImpl.getInstance(itemView.getContext()).getOrInitPlayer(getConfig(), getKey());
+        }
     }
 
     private void unregisterPlayer() {
@@ -270,10 +278,18 @@ public abstract class PlayableItemViewHolder extends RecyclerView.ViewHolder imp
     }
 
     private MediaItem createMediaItem() {
-        return PlayerProviderImpl.getInstance(itemView.getContext()).createMediaItem(
-            getConfig(),
-            Uri.parse(getUrl())
-        );
+        if(showInStreamVideoAds && !TextUtils.isEmpty(getAdTagUrl())) {
+            return PlayerProviderImpl.getInstance(itemView.getContext()).createAdSupportedMediaItem(
+                    getConfig(),
+                    Uri.parse(getVideoUrl()),
+                    Uri.parse(getAdTagUrl())
+            );
+        } else {
+            return PlayerProviderImpl.getInstance(itemView.getContext()).createMediaItem(
+                    getConfig(),
+                    Uri.parse(getVideoUrl())
+            );
+        }
     }
 
     private void setPlaybackInfo(PlaybackInfo playbackInfo) {
@@ -309,7 +325,7 @@ public abstract class PlayableItemViewHolder extends RecyclerView.ViewHolder imp
     @NonNull
     @Override
     public final String getKey() {
-        return (getUrl() + getTag());
+        return (getVideoUrl() + getTag());
     }
 
     /**

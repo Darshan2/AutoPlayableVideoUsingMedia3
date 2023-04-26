@@ -104,7 +104,22 @@ public interface Playable extends PlayabilityStateChangeObserver {
      * @return the media url
      */
     @NonNull
-    String getUrl();
+    String getVideoUrl();
+
+    /**
+     * Retrieves the ad tag Url associated with this item.
+     *
+     * @return the media url
+     */
+    @NonNull
+    String getAdTagUrl();
+
+    /**
+     * Determines whether the current item support support ads or not.
+     *
+     * @return whether the current item tem support support ads or not
+     */
+    boolean showInStreamVideAds();
 
     /**
      * Retrieves this {@link Playable}'s tag.
@@ -117,7 +132,7 @@ public interface Playable extends PlayabilityStateChangeObserver {
     String getTag();
 
     /**
-     * Composes the key out the url {@link #getUrl()}  and tag {@link #getTag()} to be used
+     * Composes the key out the url {@link #getVideoUrl()}  and tag {@link #getTag()} to be used
      * for the internal management of the {@link Player} instances.
      * (override the {@link #getTag()} in cases when you need to prevent the sharing of the {@link Player}
      * instances and corresponding {@link PlaybackInfo}s between the {@link Playable}s with the same media urls.)
